@@ -1,6 +1,8 @@
 # Do not use make's built-in rules
 # (this improves performance and avoids hard-to-debug behaviour);
 # also do not print "Entering directory..." messages from make
+include ../../../Makefile.inc
+
 .SUFFIXES:
 MAKEFLAGS += -r --no-print-directory
 
@@ -24,7 +26,7 @@ ifeq (,$(srctree))
 endif
 export srctree
 
-include ../scripts/Makefile.include
+-include ../scripts/Makefile.include
 
 # OUTPUT fixup should be *after* include ../scripts/Makefile.include
 ifneq ($(OUTPUT),)
@@ -44,13 +46,18 @@ conf: $(OUTPUT)Makefile.conf
 $(OUTPUT)Makefile.conf $(OUTPUT)/kernel.config: Makefile.autoconf
 	$(call QUIET_AUTOCONF, headers)$(MAKE) -f Makefile.autoconf -s
 
-include $(OUTPUT)Makefile.conf
+-include $(OUTPUT)Makefile.conf
 
 export CFLAGS += -I$(OUTPUT)/include -Iinclude -Wall -g -O2 -Wextra \
 	 -Wno-unused-parameter \
 	 -Wno-missing-field-initializers -fno-strict-aliasing
 
-include Targets
+export CXXFLAGS += -std=c++11 -fPIC -I$(OUTPUT)/include -Iinclude -I$(SYSCALL_DIR) \
+	 -Wall -g -O2 -Wextra \
+	 -Wno-unused-parameter \
+	 -Wno-missing-field-initializers -fno-strict-aliasing
+
+-include Targets
 
 # Expand targets to output location and suffix but preserve special
 # targets (e.g. .WAIT)
@@ -92,10 +99,44 @@ $(OUTPUT)%$(SOSUF): LDFLAGS += -shared
 $(OUTPUT)%$(SOSUF): $(OUTPUT)%-in.o $(OUTPUT)liblkl.a
 	$(QUIET_LINK)$(CC) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y)
 
+# Compile runtime for fuzzing
+$(OUTPUT)kafl-llvm-rt.o: $(AFL_LLVM_DIR)/kafl-llvm-rt.o.c
+	(cd $(AFL_LLVM_DIR) && env -u CPP -u CC -u MAKEFLAGS -u LDFLAGS LLVM_CONFIG=$(LLVM_CONF) make)
+	cp -f $(AFL_DIR)/kafl-llvm-rt.o $@
+
+$(OUTPUT)kcov-llvm-rt.o: $(AFL_LLVM_DIR)/kcov-llvm-rt.o.cc
+	(cd $(AFL_LLVM_DIR) && env -u CPP -u CC -u MAKEFLAGS -u LDFLAGS LLVM_CONFIG=$(LLVM_CONF) make)
+	cp -f $(AFL_DIR)/kcov-llvm-rt.o $@
+
 # liblkl is special
 $(OUTPUT)liblkl$(SOSUF): $(OUTPUT)%-in.o $(OUTPUT)lib/lkl.o
 $(OUTPUT)liblkl.a: $(OUTPUT)lib/liblkl-in.o $(OUTPUT)lib/lkl.o
 	$(QUIET_AR)$(AR) -rc $@ $^
+
+# executer's dependencies
+$(OUTPUT)Image.o:
+	cp -f $(SYSCALL_DIR)/Image.o $@
+
+$(OUTPUT)Program.o:
+	cp -f $(SYSCALL_DIR)/Program.o $@
+
+$(OUTPUT)Utils.o:
+	cp -f $(SYSCALL_DIR)/Utils.o $@
+
+$(OUTPUT)Constants.o:
+	cp -f $(SYSCALL_DIR)/Constants.o $@
+
+# executor (CPP)
+$(OUTPUT)executor: $(OUTPUT)executor-in.o $(OUTPUT)Image.o $(OUTPUT)Program.o $(OUTPUT)Utils.o $(OUTPUT)Constants.o $(OUTPUT)liblkl.a
+	$(QUIET_LINK)$(CXX) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y)
+
+# combined (CPP)
+$(OUTPUT)combined: $(OUTPUT)combined-in.o $(OUTPUT)Image.o $(OUTPUT)Program.o $(OUTPUT)Utils.o $(OUTPUT)Constants.o $(OUTPUT)liblkl.a
+	$(QUIET_LINK)$(CXX) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y)
+
+# combined-consistency (CPP)
+$(OUTPUT)combined-consistency: $(OUTPUT)combined-consistency-in.o $(OUTPUT)Image.o $(OUTPUT)Program.o $(OUTPUT)Utils.o $(OUTPUT)Constants.o $(OUTPUT)liblkl.a
+	$(QUIET_LINK)$(CXX) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y)
 
 # rule to link programs
 $(OUTPUT)%$(EXESUF): $(OUTPUT)%-in.o $(OUTPUT)liblkl.a

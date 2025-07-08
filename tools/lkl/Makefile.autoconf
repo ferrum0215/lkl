@@ -1,6 +1,6 @@
-POSIX_HOSTS=elf64 elf32
+POSIX_HOSTS=elf64-x86-64 elf32-i386 elf64-x86-64-freebsd elf32-littlearm elf64-littleaarch64
 KASAN_HOSTS=elf64-x86-64
-NT_HOSTS=pe
+NT_HOSTS=pe-i386 pe-x86-64
 
 define set_autoconf_var
   $(shell echo "#define LKL_HOST_CONFIG_$(1) $(2)" \
@@ -250,13 +250,15 @@ define do_autoconf_mmu
 endef
 
 define do_autoconf
-  $(if $(LKL_FUZZING),$(call do_autoconf_fuzzing))
-  $(if $(LLVM),$(call do_autoconf_llvm),$(call do_autoconf_gnu))
-  $(eval EXEC_FMT := $(shell echo $(LD_FMT) | cut -d "-" -f1))
-  $(if $(filter $(EXEC_FMT),$(POSIX_HOSTS)),$(call posix_host,$(LD_FMT)))
-  $(if $(filter $(EXEC_FMT),$(NT_HOSTS)),$(call nt_host,$(LD_FMT)))
-  $(if $(and $(filter yes,$(kasan)),$(filter $(LD_FMT),$(KASAN_HOSTS))),$(call kasan_enable,$(LD_FMT)))
-  $(if $(MMU),$(call do_autoconf_mmu))
+  export CROSS_COMPILE := $(CROSS_COMPILE)
+  export CC := $(CROSS_COMPILE)gcc
+  export LD := $(CROSS_COMPILE)ld
+  export AR := $(CROSS_COMPILE)ar
+  $(eval LD := $(CROSS_COMPILE)ld)
+  $(eval CC := $(CROSS_COMPILE)gcc)
+  $(eval LD_FMT := $(shell $(LD) -r -print-output-format))
+  $(if $(filter $(LD_FMT),$(POSIX_HOSTS)),$(call posix_host,$(LD_FMT)))
+  $(if $(filter $(LD_FMT),$(NT_HOSTS)),$(call nt_host,$(LD_FMT)))
 endef
 
 export do_autoconf

@@ -1,106 +1,170 @@
-# SPDX-License-Identifier: GPL-2.0
+# Do not use make's built-in rules
+# (this improves performance and avoids hard-to-debug behaviour);
+# also do not print "Entering directory..." messages from make
+include ../../../Makefile.inc
 
-KBUILD_CFLAGS += -fno-builtin
+.SUFFIXES:
+MAKEFLAGS += -r --no-print-directory
 
-exec_format = $(firstword $(subst -, ,$(CONFIG_OUTPUT_FORMAT)))
-
-ifneq (,$(filter elf64 elf32,$(exec_format)))
-KBUILD_CFLAGS += -fPIC
-else ifneq (,$(filter pe,$(exec_format)))
-ifneq ($(CONFIG_OUTPUT_FORMAT),pe-x86-64)
-prefix=_
-KBUILD_CFLAGS += -fno-leading-underscore
-endif
-# workaround for #include_next<stdarg.h> errors
-LINUXINCLUDE := -isystem arch/lkl/include/system $(LINUXINCLUDE)
-# workaround for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52991
-KBUILD_CFLAGS += -mno-ms-bitfields -D__DISABLE_EXPORTS
-else ifneq (,$(CONFIG_OUTPUT_FORMAT))
-$(error Unrecognized platform: $(CONFIG_OUTPUT_FORMAT))
+ifneq ($(silent),1)
+  ifneq ($(V),1)
+	QUIET_AUTOCONF       = @echo '  AUTOCONF '$@;
+	Q = @
+  endif
 endif
 
-ifeq ($(shell uname -s), Linux)
-NPROC=$(shell nproc)
-else ifneq ($(shell uname -s | grep MSYS),)
-NPROC=${NUMBER_OF_PROCESSORS}
-else # e.g., FreeBSD
-NPROC=$(shell sysctl -n hw.ncpu)
+PREFIX   := /usr
+
+ifeq (,$(srctree))
+  srctree := $(patsubst %/,%,$(dir $(shell pwd)))
+  srctree := $(patsubst %/,%,$(dir $(srctree)))
+endif
+export srctree
+
+-include ../scripts/Makefile.include
+
+# OUTPUT fixup should be *after* include ../scripts/Makefile.include
+ifneq ($(OUTPUT),)
+  OUTPUT := $(OUTPUT)/tools/lkl/
+else
+  OUTPUT := $(CURDIR)/
+endif
+export OUTPUT
+
+
+all:
+
+conf: $(OUTPUT)Makefile.conf
+
+$(OUTPUT)Makefile.conf: Makefile.autoconf
+	$(call QUIET_AUTOCONF, headers)$(MAKE) -f Makefile.autoconf -s
+
+-include $(OUTPUT)Makefile.conf
+
+export CFLAGS += -I$(OUTPUT)/include -Iinclude -Wall -g -O2 -Wextra \
+	 -Wno-unused-parameter \
+	 -Wno-missing-field-initializers -fno-strict-aliasing
+
+export CXXFLAGS += -std=c++11 -fPIC -I$(OUTPUT)/include -Iinclude -I$(SYSCALL_DIR) \
+	 -Wall -g -O2 -Wextra \
+	 -Wno-unused-parameter \
+	 -Wno-missing-field-initializers -fno-strict-aliasing
+
+-include Targets
+
+TARGETS := $(progs-y:%=$(OUTPUT)%$(EXESUF))
+TARGETS += $(libs-y:%=$(OUTPUT)%$(SOSUF))
+all: $(TARGETS)
+
+# this workaround is for FreeBSD
+bin/stat:
+ifeq ($(LKL_HOST_CONFIG_BSD),y)
+	$(Q)ln -sf `which gnustat` bin/stat
+else
+	$(Q)touch bin/stat
 endif
 
-ifdef CONFIG_CC_IS_CLANG
-# LKL fuzzing is based on libFuzzer which depends on clang compiler.
-ifdef CONFIG_LKL_FUZZING
-# This makes sure assembly code is compiled with clang's integerated assembler
-# so the result object files are compatible with the fuzzing flag.
-KBUILD_CFLAGS += -integrated-as
+# rule to build lkl.o
+$(OUTPUT)lib/lkl.o: bin/stat
+	$(Q)$(MAKE) -C ../.. ARCH=lkl $(KOPT) defconfig
+# this workaround is for arm32 linker (ld.gold)
+	$(Q)export PATH=$(srctree)/tools/lkl/bin/:${PATH} ;\
+	$(MAKE) -C ../.. ARCH=lkl $(KOPT) install INSTALL_PATH=$(OUTPUT)
 
-# We want debug symbols for fuzzing (e.g. better stack trace in gdb).
-KBUILD_CFLAGS += -g
+# rules to link libs
+$(OUTPUT)%$(SOSUF): LDFLAGS += -shared
+$(OUTPUT)%$(SOSUF): $(OUTPUT)%-in.o $(OUTPUT)liblkl.a
+	$(QUIET_LINK)$(CC) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y)
 
-# Enabling libfuzzer instrumentation
-KBUILD_CFLAGS += -fsanitize=fuzzer-no-link
+# Compile runtime for fuzzing
+$(OUTPUT)kafl-llvm-rt.o: $(AFL_LLVM_DIR)/kafl-llvm-rt.o.c
+	(cd $(AFL_LLVM_DIR) && env -u CPP -u CC -u MAKEFLAGS -u LDFLAGS LLVM_CONFIG=$(LLVM_CONF) make)
+	cp -f $(AFL_DIR)/kafl-llvm-rt.o $@
 
-KEEP_EH_FRAMES := true
-endif
+$(OUTPUT)kcov-llvm-rt.o: $(AFL_LLVM_DIR)/kcov-llvm-rt.o.cc
+	(cd $(AFL_LLVM_DIR) && env -u CPP -u CC -u MAKEFLAGS -u LDFLAGS LLVM_CONFIG=$(LLVM_CONF) make)
+	cp -f $(AFL_DIR)/kcov-llvm-rt.o $@
 
-# This flag enables clang's extra instrumentation for visualizing line coverage.
-ifdef CONFIG_LKL_LINE_COV
-KBUILD_CFLAGS += -fprofile-instr-generate -fcoverage-mapping
-endif
-endif
+# liblkl is special
+$(OUTPUT)liblkl$(SOSUF): $(OUTPUT)%-in.o $(OUTPUT)lib/lkl.o
+$(OUTPUT)liblkl.a: $(OUTPUT)lib/liblkl-in.o $(OUTPUT)lib/lkl.o $(OUTPUT)kafl-llvm-rt.o
+# $(OUTPUT)liblkl.a: $(OUTPUT)lib/liblkl-in.o $(OUTPUT)lib/lkl.o $(OUTPUT)kcov-llvm-rt.o
+	$(QUIET_AR)$(AR) -rc $@ $^
 
-LDFLAGS_vmlinux += -r
-LKL_ENTRY_POINTS := lkl_start_kernel lkl_sys_halt lkl_syscall lkl_trigger_irq \
-	lkl_get_free_irq lkl_put_irq lkl_is_running lkl_bug lkl_printf \
-	lkl_init lkl_cleanup
+# executer's dependencies
 
-ifeq ($(CONFIG_OUTPUT_FORMAT),elf32-i386)
-LKL_ENTRY_POINTS += \
-	__x86.get_pc_thunk.bx __x86.get_pc_thunk.dx __x86.get_pc_thunk.ax \
-	__x86.get_pc_thunk.cx __x86.get_pc_thunk.si __x86.get_pc_thunk.di
-endif
+$(OUTPUT)Image.o:
+	cp -f $(SYSCALL_DIR)/Image.o $@
 
-core-y += arch/lkl/kernel/
-core-y += arch/lkl/lib/
-core-y += arch/lkl/mm/
-core-y += arch/lkl/drivers/
+$(OUTPUT)Program.o:
+	cp -f $(SYSCALL_DIR)/Program.o $@
 
-configh-y = printf "/* this header is autogenerated */\n"
-configh-$(CONFIG_64BIT) += && printf '\#define LKL_CONFIG_64BIT 1\n'
-configh-$(CONFIG_CPU_BIG_ENDIAN) += && printf '\#define LKL_CONFIG_CPU_BIG_ENDIAN 1\n'
-configh-$(CONFIG_KASAN_KUNIT_TEST) += && printf '\#define LKL_CONFIG_KASAN_KUNIT_TEST 1\n'
+$(OUTPUT)Utils.o:
+	cp -f $(SYSCALL_DIR)/Utils.o $@
 
-quiet_cmd_gen_configh = GEN     $@
-      cmd_gen_configh = mkdir -p $(dir $@); ($(configh-y)) > $@
+$(OUTPUT)Constants.o:
+	cp -f $(SYSCALL_DIR)/Constants.o $@
 
-targets += arch/lkl/include/generated/uapi/asm/config.h
+# executor (CPP)
+$(OUTPUT)executor: $(OUTPUT)executor-in.o $(OUTPUT)Image.o $(OUTPUT)Program.o $(OUTPUT)Utils.o $(OUTPUT)Constants.o $(OUTPUT)liblkl.a
+	$(QUIET_LINK)$(CXX) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y)
 
-arch/lkl/include/generated/uapi/asm/config.h: FORCE
-	$(call if_changed,gen_configh)
+# combined (CPP)
+$(OUTPUT)combined: $(OUTPUT)combined-in.o $(OUTPUT)Image.o $(OUTPUT)Program.o $(OUTPUT)Utils.o $(OUTPUT)Constants.o $(OUTPUT)liblkl.a
+	$(QUIET_LINK)$(CXX) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y)
 
-archprepare: arch/lkl/include/generated/uapi/asm/config.h
+# combined-consistency (CPP)
+$(OUTPUT)combined-consistency: $(OUTPUT)combined-consistency-in.o $(OUTPUT)Image.o $(OUTPUT)Program.o $(OUTPUT)Utils.o $(OUTPUT)Constants.o $(OUTPUT)liblkl.a
+	$(QUIET_LINK)$(CXX) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y)
 
-all: lkl.o arch/lkl/include/generated/uapi/asm/syscall_defs.h
+# rule to link programs
+$(OUTPUT)%$(EXESUF): $(OUTPUT)%-in.o $(OUTPUT)liblkl.a
+	$(QUIET_LINK)$(CC) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y)
+	# $(QUIET_LINK)$(CXX) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y)
+	# $(srctree)
 
-lkl.o: vmlinux
-	$(OBJCOPY) $(if $(KEEP_EH_FRAMES),,-R .eh_frame) -R .syscall_defs $(foreach sym,$(LKL_ENTRY_POINTS),-G$(prefix)$(sym)) --prefix-symbols=$(prefix) vmlinux lkl.o
+# rule to build objects
+$(OUTPUT)%-in.o: $(OUTPUT)lib/lkl.o FORCE
+	$(Q)$(MAKE) -f $(srctree)/tools/build/Makefile.build dir=$(patsubst %/,%,$(dir $*)) obj=$(notdir $*)
 
-arch/lkl/include/generated/uapi/asm/syscall_defs.h: vmlinux
-	$(OBJCOPY) -j .syscall_defs -O binary --set-section-flags .syscall_defs=alloc $< $@
-	$(Q) export tmpfile=$(shell mktemp); \
-	sed 's/\x0//g' $@ > $$tmpfile; mv $$tmpfile $@ ; rm -f $$tmpfile
+$(OUTPUT)cpfromfs$(EXESUF): cptofs$(EXESUF)
+	$(Q)if ! [ -e $@ ]; then ln -s $< $@; fi
 
-install: scripts_unifdef
-	@echo "  INSTALL	$(INSTALL_PATH)/lib/lkl.o"
-	@mkdir -p $(INSTALL_PATH)/lib/
-	@cp lkl.o $(INSTALL_PATH)/lib/
-	@$(srctree)/arch/lkl/scripts/headers_install.py \
-		$(subst -j,-j$(NPROC),$(findstring -j,$(MAKEFLAGS))) \
-		$(INSTALL_PATH)/include
+clean:
+	$(call QUIET_CLEAN, objects)find $(OUTPUT) -name '*.o' -delete -o -name '\.*.cmd'\
+	 -delete -o -name '\.*.d' -delete
+	$(call QUIET_CLEAN, headers)$(RM) -r $(OUTPUT)/include/lkl/
+	$(call QUIET_CLEAN, liblkl.a)$(RM) $(OUTPUT)/liblkl.a
+	$(call QUIET_CLEAN, targets)$(RM) $(TARGETS) bin/stat
 
-define archhelp
-  echo '  install	- Install library and headers to INSTALL_PATH/{lib,include}'
-endef
+clean-conf: clean
+	$(call QUIET_CLEAN, Makefile.conf)$(RM) $(OUTPUT)/Makefile.conf
+
+headers_install: $(TARGETS)
+	$(call QUIET_INSTALL, headers) \
+	    install -d $(DESTDIR)$(PREFIX)/include ; \
+	    install -m 644 include/lkl.h include/lkl_host.h $(OUTPUT)include/lkl_autoconf.h \
+	      $(DESTDIR)$(PREFIX)/include ; \
+	    cp -r $(OUTPUT)include/lkl $(DESTDIR)$(PREFIX)/include
+
+libraries_install: $(libs-y:%=$(OUTPUT)%$(SOSUF))
+	$(call QUIET_INSTALL, libraries) \
+	    install -d $(DESTDIR)$(PREFIX)/lib ; \
+	    install -m 644 $^ $(DESTDIR)$(PREFIX)/lib
+
+programs_install: $(progs-y:%=$(OUTPUT)%$(EXESUF))
+	$(call QUIET_INSTALL, programs) \
+	    install -d $(DESTDIR)$(PREFIX)/bin ; \
+	    install -m 755 $^ $(DESTDIR)$(PREFIX)/bin
+
+install: headers_install libraries_install programs_install
 
 
+run-tests:
+	./tests/run.py $(tests)
 
+FORCE: ;
+.PHONY: all clean FORCE run-tests
+.PHONY: headers_install libraries_install programs_install install
+.NOTPARALLEL : lib/lkl.o
+.SECONDARY:

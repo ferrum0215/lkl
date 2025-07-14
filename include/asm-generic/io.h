@@ -527,6 +527,14 @@ static inline void writesq(volatile void __iomem *addr, const void *buffer,
 #define PCI_IOBASE ((void __iomem *)0)
 #endif
 
+static inline void __iomem *PCI_ADD(unsigned long addr)
+{
+    if (!PCI_IOBASE)
+        return (void __iomem *)addr;
+    else
+        return (void __iomem *)((unsigned long)PCI_IOBASE + addr);
+}
+
 #ifndef IO_SPACE_LIMIT
 #define IO_SPACE_LIMIT 0xffff
 #endif
@@ -544,7 +552,7 @@ static inline u8 _inb(unsigned long addr)
 	u8 val;
 
 	__io_pbr();
-	val = __raw_readb(PCI_IOBASE + addr);
+	val = __raw_readb(PCI_ADD(addr));
 	__io_par(val);
 	return val;
 }
@@ -557,7 +565,7 @@ static inline u16 _inw(unsigned long addr)
 	u16 val;
 
 	__io_pbr();
-	val = __le16_to_cpu((__le16 __force)__raw_readw(PCI_IOBASE + addr));
+	val = __le16_to_cpu((__le16 __force)__raw_readw(PCI_ADD(addr)));
 	__io_par(val);
 	return val;
 }
@@ -570,7 +578,7 @@ static inline u32 _inl(unsigned long addr)
 	u32 val;
 
 	__io_pbr();
-	val = __le32_to_cpu((__le32 __force)__raw_readl(PCI_IOBASE + addr));
+	val = __le32_to_cpu((__le32 __force)__raw_readl(PCI_ADD(addr)));
 	__io_par(val);
 	return val;
 }
@@ -581,7 +589,7 @@ static inline u32 _inl(unsigned long addr)
 static inline void _outb(u8 value, unsigned long addr)
 {
 	__io_pbw();
-	__raw_writeb(value, PCI_IOBASE + addr);
+	__raw_writeb(value, PCI_ADD(addr));
 	__io_paw();
 }
 #endif
@@ -591,7 +599,7 @@ static inline void _outb(u8 value, unsigned long addr)
 static inline void _outw(u16 value, unsigned long addr)
 {
 	__io_pbw();
-	__raw_writew((u16 __force)cpu_to_le16(value), PCI_IOBASE + addr);
+	__raw_writew((u16 __force)cpu_to_le16(value), PCI_ADD(addr));
 	__io_paw();
 }
 #endif
@@ -601,7 +609,7 @@ static inline void _outw(u16 value, unsigned long addr)
 static inline void _outl(u32 value, unsigned long addr)
 {
 	__io_pbw();
-	__raw_writel((u32 __force)cpu_to_le32(value), PCI_IOBASE + addr);
+	__raw_writel((u32 __force)cpu_to_le32(value), PCI_ADD(addr));
 	__io_paw();
 }
 #endif
@@ -689,7 +697,7 @@ static inline void outl_p(u32 value, unsigned long addr)
 #define insb insb
 static inline void insb(unsigned long addr, void *buffer, unsigned int count)
 {
-	readsb(PCI_IOBASE + addr, buffer, count);
+	readsb(PCI_ADD(addr), buffer, count);
 }
 #endif
 
@@ -697,7 +705,7 @@ static inline void insb(unsigned long addr, void *buffer, unsigned int count)
 #define insw insw
 static inline void insw(unsigned long addr, void *buffer, unsigned int count)
 {
-	readsw(PCI_IOBASE + addr, buffer, count);
+	readsw(PCI_ADD(addr), buffer, count);
 }
 #endif
 
@@ -705,7 +713,7 @@ static inline void insw(unsigned long addr, void *buffer, unsigned int count)
 #define insl insl
 static inline void insl(unsigned long addr, void *buffer, unsigned int count)
 {
-	readsl(PCI_IOBASE + addr, buffer, count);
+	readsl(PCI_ADD(addr), buffer, count);
 }
 #endif
 
@@ -714,7 +722,7 @@ static inline void insl(unsigned long addr, void *buffer, unsigned int count)
 static inline void outsb(unsigned long addr, const void *buffer,
 			 unsigned int count)
 {
-	writesb(PCI_IOBASE + addr, buffer, count);
+	writesb(PCI_ADD(addr), buffer, count);
 }
 #endif
 
@@ -723,7 +731,7 @@ static inline void outsb(unsigned long addr, const void *buffer,
 static inline void outsw(unsigned long addr, const void *buffer,
 			 unsigned int count)
 {
-	writesw(PCI_IOBASE + addr, buffer, count);
+	writesw(PCI_ADD(addr), buffer, count);
 }
 #endif
 
@@ -732,7 +740,7 @@ static inline void outsw(unsigned long addr, const void *buffer,
 static inline void outsl(unsigned long addr, const void *buffer,
 			 unsigned int count)
 {
-	writesl(PCI_IOBASE + addr, buffer, count);
+	writesl(PCI_ADD(addr), buffer, count);
 }
 #endif
 

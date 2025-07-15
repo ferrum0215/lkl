@@ -194,4 +194,3 @@ FORCE: ;
 .PHONY: headers_install libraries_install programs_install install
 .NOTPARALLEL : lib/lkl.o
 .SECONDARY:
-.WAIT:

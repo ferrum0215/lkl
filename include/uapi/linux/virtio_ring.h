@@ -1,5 +1,5 @@
-#ifndef _LKL_LINUX_VIRTIO_RING_H
-#define _LKL_LINUX_VIRTIO_RING_H
+#ifndef _UAPI_LINUX_VIRTIO_RING_H
+#define _UAPI_LINUX_VIRTIO_RING_H
 /* An interface for efficient virtio implementation, currently for use by KVM,
  * but hopefully others soon.  Do NOT change this since it will
  * break existing servers and clients.
@@ -31,105 +31,107 @@
  * SUCH DAMAGE.
  *
  * Copyright Rusty Russell IBM Corporation 2007. */
+#ifndef __KERNEL__
 #include <stdint.h>
-#include <lkl/linux/types.h>
-#include <lkl/linux/virtio_types.h>
+#endif
+#include <linux/types.h>
+#include <linux/virtio_types.h>
 
 /* This marks a buffer as continuing via the next field. */
-#define LKL_VRING_DESC_F_NEXT   1
+#define VRING_DESC_F_NEXT	1
 /* This marks a buffer as write-only (otherwise read-only). */
-#define LKL_VRING_DESC_F_WRITE  2
+#define VRING_DESC_F_WRITE	2
 /* This means the buffer contains a list of buffer descriptors. */
-#define LKL_VRING_DESC_F_INDIRECT       4
+#define VRING_DESC_F_INDIRECT	4
 
 /*
  * Mark a descriptor as available or used in packed ring.
  * Notice: they are defined as shifts instead of shifted values.
  */
-#define LKL_VRING_PACKED_DESC_F_AVAIL   7
-#define LKL_VRING_PACKED_DESC_F_USED    15
+#define VRING_PACKED_DESC_F_AVAIL	7
+#define VRING_PACKED_DESC_F_USED	15
 
 /* The Host uses this in used->flags to advise the Guest: don't kick me when
  * you add a buffer.  It's unreliable, so it's simply an optimization.  Guest
  * will still kick if it's out of buffers. */
-#define LKL_VRING_USED_F_NO_NOTIFY      1
+#define VRING_USED_F_NO_NOTIFY	1
 /* The Guest uses this in avail->flags to advise the Host: don't interrupt me
  * when you consume a buffer.  It's unreliable, so it's simply an
  * optimization.  */
-#define LKL_VRING_AVAIL_F_NO_INTERRUPT  1
+#define VRING_AVAIL_F_NO_INTERRUPT	1
 
 /* Enable events in packed ring. */
-#define LKL_VRING_PACKED_EVENT_FLAG_ENABLE      0x0
+#define VRING_PACKED_EVENT_FLAG_ENABLE	0x0
 /* Disable events in packed ring. */
-#define LKL_VRING_PACKED_EVENT_FLAG_DISABLE     0x1
+#define VRING_PACKED_EVENT_FLAG_DISABLE	0x1
 /*
  * Enable events for a specific descriptor in packed ring.
  * (as specified by Descriptor Ring Change Event Offset/Wrap Counter).
- * Only valid if LKL_VIRTIO_RING_F_EVENT_IDX has been negotiated.
+ * Only valid if VIRTIO_RING_F_EVENT_IDX has been negotiated.
  */
-#define LKL_VRING_PACKED_EVENT_FLAG_DESC        0x2
+#define VRING_PACKED_EVENT_FLAG_DESC	0x2
 
 /*
  * Wrap counter bit shift in event suppression structure
  * of packed ring.
  */
-#define LKL_VRING_PACKED_EVENT_F_WRAP_CTR       15
+#define VRING_PACKED_EVENT_F_WRAP_CTR	15
 
 /* We support indirect buffer descriptors */
-#define LKL_VIRTIO_RING_F_INDIRECT_DESC 28
+#define VIRTIO_RING_F_INDIRECT_DESC	28
 
 /* The Guest publishes the used index for which it expects an interrupt
  * at the end of the avail ring. Host should ignore the avail->flags field. */
 /* The Host publishes the avail index for which it expects a kick
  * at the end of the used ring. Guest should ignore the used->flags field. */
-#define LKL_VIRTIO_RING_F_EVENT_IDX             29
+#define VIRTIO_RING_F_EVENT_IDX		29
 
 /* Alignment requirements for vring elements.
  * When using pre-virtio 1.0 layout, these fall out naturally.
  */
-#define LKL_VRING_AVAIL_ALIGN_SIZE 2
-#define LKL_VRING_USED_ALIGN_SIZE 4
-#define LKL_VRING_DESC_ALIGN_SIZE 16
+#define VRING_AVAIL_ALIGN_SIZE 2
+#define VRING_USED_ALIGN_SIZE 4
+#define VRING_DESC_ALIGN_SIZE 16
 
 /**
- * struct lkl_vring_desc - Virtio ring descriptors,
+ * struct vring_desc - Virtio ring descriptors,
  * 16 bytes long. These can chain together via @next.
  *
  * @addr: buffer address (guest-physical)
  * @len: buffer length
  * @flags: descriptor flags
  * @next: index of the next descriptor in the chain,
- *        if the LKL_VRING_DESC_F_NEXT flag is set. We chain unused
+ *        if the VRING_DESC_F_NEXT flag is set. We chain unused
  *        descriptors via this, too.
  */
-struct lkl_vring_desc {
-        __lkl__virtio64 addr;
-        __lkl__virtio32 len;
-        __lkl__virtio16 flags;
-        __lkl__virtio16 next;
+struct vring_desc {
+	__virtio64 addr;
+	__virtio32 len;
+	__virtio16 flags;
+	__virtio16 next;
 };
 
-struct lkl_vring_avail {
-        __lkl__virtio16 flags;
-        __lkl__virtio16 idx;
-        __lkl__virtio16 ring[];
+struct vring_avail {
+	__virtio16 flags;
+	__virtio16 idx;
+	__virtio16 ring[];
 };
 
-/* lkl_u32 is used here for ids for padding reasons. */
-struct lkl_vring_used_elem {
-        /* Index of start of used descriptor chain. */
-        __lkl__virtio32 id;
-        /* Total length of the descriptor chain which was used (written to) */
-        __lkl__virtio32 len;
+/* u32 is used here for ids for padding reasons. */
+struct vring_used_elem {
+	/* Index of start of used descriptor chain. */
+	__virtio32 id;
+	/* Total length of the descriptor chain which was used (written to) */
+	__virtio32 len;
 };
 
-typedef struct lkl_vring_used_elem __attribute__((aligned(LKL_VRING_USED_ALIGN_SIZE)))
-        vring_used_elem_t;
+typedef struct vring_used_elem __attribute__((aligned(VRING_USED_ALIGN_SIZE)))
+	vring_used_elem_t;
 
-struct lkl_vring_used {
-        __lkl__virtio16 flags;
-        __lkl__virtio16 idx;
-        vring_used_elem_t ring[];
+struct vring_used {
+	__virtio16 flags;
+	__virtio16 idx;
+	vring_used_elem_t ring[];
 };
 
 /*
@@ -146,21 +148,21 @@ struct lkl_vring_used {
  * can both increase and decrease alignment, and specifying the packed
  * attribute generates a warning.
  */
-typedef struct lkl_vring_desc __attribute__((aligned(LKL_VRING_DESC_ALIGN_SIZE)))
-        vring_desc_t;
-typedef struct lkl_vring_avail __attribute__((aligned(LKL_VRING_AVAIL_ALIGN_SIZE)))
-        vring_avail_t;
-typedef struct lkl_vring_used __attribute__((aligned(LKL_VRING_USED_ALIGN_SIZE)))
-        vring_used_t;
+typedef struct vring_desc __attribute__((aligned(VRING_DESC_ALIGN_SIZE)))
+	vring_desc_t;
+typedef struct vring_avail __attribute__((aligned(VRING_AVAIL_ALIGN_SIZE)))
+	vring_avail_t;
+typedef struct vring_used __attribute__((aligned(VRING_USED_ALIGN_SIZE)))
+	vring_used_t;
 
-struct lkl_vring {
-        unsigned int num;
+struct vring {
+	unsigned int num;
 
-        vring_desc_t *desc;
+	vring_desc_t *desc;
 
-        vring_avail_t *avail;
+	vring_avail_t *avail;
 
-        vring_used_t *used;
+	vring_used_t *used;
 };
 
 #ifndef VIRTIO_RING_NO_LEGACY
@@ -168,47 +170,47 @@ struct lkl_vring {
 /* The standard layout for the ring is a continuous chunk of memory which looks
  * like this.  We assume num is a power of 2.
  *
- * struct lkl_vring
+ * struct vring
  * {
- *      // The actual descriptors (16 bytes each)
- *      struct lkl_vring_desc desc[num];
+ *	// The actual descriptors (16 bytes each)
+ *	struct vring_desc desc[num];
  *
- *      // A ring of available descriptor heads with free-running index.
- *      __lkl__virtio16 avail_flags;
- *      __lkl__virtio16 avail_idx;
- *      __lkl__virtio16 available[num];
- *      __lkl__virtio16 used_event_idx;
+ *	// A ring of available descriptor heads with free-running index.
+ *	__virtio16 avail_flags;
+ *	__virtio16 avail_idx;
+ *	__virtio16 available[num];
+ *	__virtio16 used_event_idx;
  *
- *      // Padding to the next align boundary.
- *      char pad[];
+ *	// Padding to the next align boundary.
+ *	char pad[];
  *
- *      // A ring of used descriptor heads with free-running index.
- *      __lkl__virtio16 used_flags;
- *      __lkl__virtio16 used_idx;
- *      struct lkl_vring_used_elem used[num];
- *      __lkl__virtio16 avail_event_idx;
+ *	// A ring of used descriptor heads with free-running index.
+ *	__virtio16 used_flags;
+ *	__virtio16 used_idx;
+ *	struct vring_used_elem used[num];
+ *	__virtio16 avail_event_idx;
  * };
  */
 /* We publish the used event index at the end of the available ring, and vice
  * versa. They are at the end for backwards compatibility. */
-#define lkl_vring_used_event(vr) ((vr)->avail->ring[(vr)->num])
-#define lkl_vring_avail_event(vr) (*(__lkl__virtio16 *)&(vr)->used->ring[(vr)->num])
+#define vring_used_event(vr) ((vr)->avail->ring[(vr)->num])
+#define vring_avail_event(vr) (*(__virtio16 *)&(vr)->used->ring[(vr)->num])
 
-static __inline__ void vring_init(struct lkl_vring *vr, unsigned int num, void *p,
-                              unsigned long align)
+static inline void vring_init(struct vring *vr, unsigned int num, void *p,
+			      unsigned long align)
 {
-        vr->num = num;
-        vr->desc = (struct lkl_vring_desc*)p;
-        vr->avail = (struct lkl_vring_avail *)((char *)p + num * sizeof(struct lkl_vring_desc));
-        vr->used = (struct lkl_vring_desc*)(((lkl_uintptr_t)&vr->avail->ring[num] + sizeof(__lkl__virtio16)
-                + align-1) & ~(align - 1));
+	vr->num = num;
+	vr->desc = (struct lkl_vring_desc*)p;
+	vr->avail = (struct vring_avail *)((char *)p + num * sizeof(struct vring_desc));
+	vr->used = (struct lkl_vring_desc*)(((uintptr_t)&vr->avail->ring[num] + sizeof(__virtio16)
+		+ align-1) & ~(align - 1));
 }
 
-static __inline__ unsigned lkl_vring_size(unsigned int num, unsigned long align)
+static inline unsigned vring_size(unsigned int num, unsigned long align)
 {
-        return ((sizeof(struct lkl_vring_desc) * num + sizeof(__lkl__virtio16) * (3 + num)
-                 + align - 1) & ~(align - 1))
-                + sizeof(__lkl__virtio16) * 3 + sizeof(struct lkl_vring_used_elem) * num;
+	return ((sizeof(struct vring_desc) * num + sizeof(__virtio16) * (3 + num)
+		 + align - 1) & ~(align - 1))
+		+ sizeof(__virtio16) * 3 + sizeof(struct vring_used_elem) * num;
 }
 
 #endif /* VIRTIO_RING_NO_LEGACY */
@@ -217,32 +219,32 @@ static __inline__ unsigned lkl_vring_size(unsigned int num, unsigned long align)
 /* Assuming a given event_idx value from the other side, if
  * we have just incremented index from old to new_idx,
  * should we trigger an event? */
-static __inline__ int lkl_vring_need_event(__lkl__u16 event_idx, __lkl__u16 new_idx, __lkl__u16 old)
+static inline int vring_need_event(__u16 event_idx, __u16 new_idx, __u16 old)
 {
-        /* Note: Xen has similar logic for notification hold-off
-         * in include/xen/interface/io/ring.h with req_event and req_prod
-         * corresponding to event_idx + 1 and new_idx respectively.
-         * Note also that req_event and req_prod in Xen start at 1,
-         * event indexes in virtio start at 0. */
-        return (__lkl__u16)(new_idx - event_idx - 1) < (__lkl__u16)(new_idx - old);
+	/* Note: Xen has similar logic for notification hold-off
+	 * in include/xen/interface/io/ring.h with req_event and req_prod
+	 * corresponding to event_idx + 1 and new_idx respectively.
+	 * Note also that req_event and req_prod in Xen start at 1,
+	 * event indexes in virtio start at 0. */
+	return (__u16)(new_idx - event_idx - 1) < (__u16)(new_idx - old);
 }
 
-struct lkl_vring_packed_desc_event {
-        /* Descriptor Ring Change Event Offset/Wrap Counter. */
-        __lkl__le16 off_wrap;
-        /* Descriptor Ring Change Event Flags. */
-        __lkl__le16 flags;
+struct vring_packed_desc_event {
+	/* Descriptor Ring Change Event Offset/Wrap Counter. */
+	__le16 off_wrap;
+	/* Descriptor Ring Change Event Flags. */
+	__le16 flags;
 };
 
-struct lkl_vring_packed_desc {
-        /* Buffer Address. */
-        __lkl__le64 addr;
-        /* Buffer Length. */
-        __lkl__le32 len;
-        /* Buffer ID. */
-        __lkl__le16 id;
-        /* The flags depending on descriptor type. */
-        __lkl__le16 flags;
+struct vring_packed_desc {
+	/* Buffer Address. */
+	__le64 addr;
+	/* Buffer Length. */
+	__le32 len;
+	/* Buffer ID. */
+	__le16 id;
+	/* The flags depending on descriptor type. */
+	__le16 flags;
 };
 
-#endif /* _LKL_LINUX_VIRTIO_RING_H */
+#endif /* _UAPI_LINUX_VIRTIO_RING_H */

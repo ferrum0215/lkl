@@ -110,7 +110,7 @@ $(OUTPUT)kcov-llvm-rt.o: $(AFL_LLVM_DIR)/kcov-llvm-rt.o.cc
 
 # liblkl is special
 $(OUTPUT)liblkl$(SOSUF): $(OUTPUT)%-in.o $(OUTPUT)lib/lkl.o
-$(OUTPUT)liblkl.a: $(OUTPUT)lib/liblkl-in.o $(OUTPUT)lib/lkl.o
+$(OUTPUT)liblkl.a: $(OUTPUT)lib/liblkl-in.o $(OUTPUT)lib/lkl.o $(OUTPUT)kafl-llvm-rt.o
 	$(QUIET_AR)$(AR) -rc $@ $^
 
 # executer's dependencies

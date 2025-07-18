@@ -545,9 +545,6 @@ int main(int argc, char **argv)
     if (argp_parse(&argp_executor, argc, argv, 0, 0, &cla) < 0)
         return -1;
 
-    if (!cla.printk)
-        lkl_host_ops.print = NULL;
-
     const char *mount_options = NULL;
     if (!strcmp(cla.fsimg_type, "btrfs"))
         mount_options = "thread_pool=1";
@@ -582,7 +579,7 @@ int main(int argc, char **argv)
     }
     disk_id = ret;
 
-    lkl_start_kernel(&lkl_host_ops, "mem=128M");
+    lkl_start_kernel("mem=128M");
 
     __afl_in_trace = 1;
 

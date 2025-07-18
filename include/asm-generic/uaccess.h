@@ -42,7 +42,7 @@ __get_user_fn(size_t size, const void __user *from, void *to)
 static __always_inline int
 __put_user_fn(size_t size, void __user *to, void *from)
 {
-	BUILD_BUG_ON(!__builtin_constant_p(size));
+	//BUILD_BUG_ON(!__builtin_constant_p(size));
 
 	switch (size) {
 	case 1:

@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 
+export CONFIG_OUTPUT_FORMAT=$(shell $(LD) -r -print-output-format)
+
 KBUILD_CFLAGS += -fno-builtin
 
 exec_format = $(firstword $(subst -, ,$(CONFIG_OUTPUT_FORMAT)))
@@ -90,7 +92,7 @@ arch/lkl/include/generated/uapi/asm/syscall_defs.h: vmlinux
 	$(Q) export tmpfile=$(shell mktemp); \
 	sed 's/\x0//g' $@ > $$tmpfile; mv $$tmpfile $@ ; rm -f $$tmpfile
 
-install: lkl.o headers arch/lkl/include/generated/uapi/asm/syscall_defs.h
+install: scripts_unifdef
 	@echo "  INSTALL        $(INSTALL_PATH)/lib/lkl.o"
 	@mkdir -p $(INSTALL_PATH)/lib/
 	@cp lkl.o $(INSTALL_PATH)/lib/

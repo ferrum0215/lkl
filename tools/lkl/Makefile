@@ -26,7 +26,7 @@ ifeq (,$(srctree))
 endif
 export srctree
 
--include ../scripts/Makefile.include
+include ../scripts/Makefile.include
 
 # OUTPUT fixup should be *after* include ../scripts/Makefile.include
 ifneq ($(OUTPUT),)
@@ -46,7 +46,7 @@ conf: $(OUTPUT)Makefile.conf
 $(OUTPUT)Makefile.conf $(OUTPUT)/kernel.config: Makefile.autoconf
 	$(call QUIET_AUTOCONF, headers)$(MAKE) -f Makefile.autoconf -s
 
--include $(OUTPUT)Makefile.conf
+include $(OUTPUT)Makefile.conf
 
 export CFLAGS += -I$(OUTPUT)/include -Iinclude -Wall -g -O2 -Wextra \
 	 -Wno-unused-parameter \
@@ -57,7 +57,7 @@ export CXXFLAGS += -std=c++11 -fPIC -I$(OUTPUT)/include -Iinclude -I$(SYSCALL_DI
 	 -Wno-unused-parameter \
 	 -Wno-missing-field-initializers -fno-strict-aliasing
 
--include Targets
+include Targets
 
 # Expand targets to output location and suffix but preserve special
 # targets (e.g. .WAIT)
@@ -99,13 +99,17 @@ $(OUTPUT)%$(SOSUF): LDFLAGS += -shared
 $(OUTPUT)%$(SOSUF): $(OUTPUT)%-in.o $(OUTPUT)liblkl.a
 	$(QUIET_LINK)$(CC) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y)
 
+# Compile runtime for fuzzing
+$(OUTPUT)afl-llvm-rt.o: $(AFL_LLVM_DIR)/afl-llvm-rt.o.c
+	(cd $(AFL_LLVM_DIR) && env -u CPP -u CC -u MAKEFLAGS -u LDFLAGS LLVM_CONFIG=$(LLVM_CONF) make)
+	cp -f $(AFL_DIR)/afl-llvm-rt.o $@
+
 # liblkl is special
 $(OUTPUT)liblkl$(SOSUF): $(OUTPUT)%-in.o $(OUTPUT)lib/lkl.o
-$(OUTPUT)liblkl.a: $(OUTPUT)lib/liblkl-in.o $(OUTPUT)lib/lkl.o
+$(OUTPUT)liblkl.a: $(OUTPUT)lib/liblkl-in.o $(OUTPUT)lib/lkl.o $(OUTPUT)afl-llvm-rt.o
 	$(QUIET_AR)$(AR) -rc $@ $^
 
 # rule to link programs
-CC := ../../../afl/afl-clang-fast
 $(OUTPUT)%$(EXESUF): $(OUTPUT)%-in.o $(OUTPUT)liblkl.a
 	$(QUIET_LINK)$(CC) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y)
 

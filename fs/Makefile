@@ -5,7 +5,7 @@
 # 14 Sep 2000, Christoph Hellwig <hch@infradead.org>
 # Rewritten to use lists instead of if-statements.
 # 
-ccflags-y := -g -fsanitize-coverage=trace-pc -O1
+ccflags-y := -g -fsanitize-coverage=trace-pc-guard -O1
 
 obj-y :=	open.o read_write.o file_table.o super.o \
 		char_dev.o stat.o exec.o pipe.o namei.o fcntl.o \

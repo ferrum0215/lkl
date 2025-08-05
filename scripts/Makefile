@@ -3,6 +3,8 @@
 # scripts contains sources for various helper programs used throughout
 # the kernel for the build process.
 
+HOST_EXTRACFLAGS += -I$(srctree)/tools/include
+
 hostprogs-always-$(CONFIG_KALLSYMS)			+= kallsyms
 hostprogs-always-$(BUILD_C_RECORDMCOUNT)		+= recordmcount
 hostprogs-always-$(CONFIG_BUILDTIME_TABLE_SORT)		+= sorttable

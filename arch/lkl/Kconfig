@@ -18,7 +18,7 @@ config LKL
 
 config LKL_FUZZING
 	bool "LLVM fuzzing instrumentation"
-	default n
+	default y
 	help
 	  This configuration option enables fuzzing instrumentation
 	  for the Linux kernel source files to enable coverage-guided

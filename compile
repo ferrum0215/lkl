@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
   # compile with instrumenting gcc
   dir_path = os.path.dirname(os.path.realpath(__file__))
-  cmd('make -C tools/lkl LKL_FUZZING=1 MMU=1 CC=/usr/bin/clang CXX=/usr/bin/clang++')
+  cmd('make -C tools/lkl LKL_FUZZING=1 CC=clang-16 CXX=/usr/local/bin/afl-clang-fast++')
 
   # copy object file
   cmd('cp -f tools/lkl/executor tools/lkl/%s-executor' % args.type)

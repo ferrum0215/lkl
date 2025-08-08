@@ -1,9 +1,12 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include <time.h>
 #include <argp.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <ctype.h>
 #include <libgen.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -40,6 +43,9 @@
 } while (0)
 
 #define gettid() syscall(SYS_gettid)
+
+__AFL_FUZZ_INIT();
+__AFL_COVERAGE();
 
 namespace fs = std::experimental::filesystem;
 
@@ -524,11 +530,9 @@ out:
 }
 
 
-extern "C" void __afl_manual_init(void **buffer, size_t *size);
-extern uint32_t __afl_in_trace;
-
 int main(int argc, char **argv)
 {
+    __AFL_COVERAGE_OFF();
     struct lkl_disk disk;
     long ret;
     char mpoint[32];
@@ -545,6 +549,9 @@ int main(int argc, char **argv)
     if (argp_parse(&argp_executor, argc, argv, 0, 0, &cla) < 0)
         return -1;
 
+    if (!cla.printk)
+        lkl_host_ops.print = NULL;
+
     const char *mount_options = NULL;
     if (!strcmp(cla.fsimg_type, "btrfs"))
         mount_options = "thread_pool=1";
@@ -555,17 +562,12 @@ int main(int argc, char **argv)
     else if (!strcmp(cla.fsimg_type, "ext4"))
         mount_options = "errors=remount-ro";
 
-    if (!cla.fsimg_path) {
-        __afl_manual_init(&image_buffer, &size);
-    } else {
-        __afl_manual_init(NULL, NULL);
-        lstat(cla.fsimg_path, &st);
-        fd = open(cla.fsimg_path, O_RDWR);
-        if (fd < 0) return -1;
-        image_buffer = mmap(0, st.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-        close(fd);
-        size = st.st_size;
-    }
+    lstat(cla.fsimg_path, &st);
+    fd = open(cla.fsimg_path, O_RDWR);
+    if (fd < 0) return -1;
+    image_buffer = mmap(0, st.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    close(fd);
+    size = st.st_size;
 
     disk.ops = NULL;
     disk.buffer = userfault_init(image_buffer, size);
@@ -579,9 +581,15 @@ int main(int argc, char **argv)
     }
     disk_id = ret;
 
-    lkl_start_kernel("mem=128M");
+    ret = lkl_init(&lkl_host_ops);
+    if (ret < 0) {
+        fprintf(stderr, "lkl init failed: %s\n", lkl_strerror(ret));
+        return -1;
+    }
+    lkl_start_kernel("mem=512M kasan.fault=report loglevel=0");
 
-    __afl_in_trace = 1;
+    __AFL_COVERAGE_DISCARD();
+    __AFL_COVERAGE_ON();
 
     std::string prefix;
     if (cla.tmp_prefix)
@@ -799,7 +807,7 @@ int main(int argc, char **argv)
             raise(SIGUSR2);
     }
 
-    __afl_in_trace = 0;
+    __AFL_COVERAGE_OFF();
 
     return 0;
 }

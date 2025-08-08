@@ -99,17 +99,13 @@ $(OUTPUT)%$(SOSUF): LDFLAGS += -shared
 $(OUTPUT)%$(SOSUF): $(OUTPUT)%-in.o $(OUTPUT)liblkl.a
 	$(QUIET_LINK)$(CC) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y)
 
-# Compile runtime for fuzzing
-$(OUTPUT)afl-llvm-rt.o: $(AFL_LLVM_DIR)/afl-llvm-rt.o.c
-	(cd $(AFL_LLVM_DIR) && env -u CPP -u CC -u MAKEFLAGS -u LDFLAGS LLVM_CONFIG=$(LLVM_CONF) make)
-	cp -f $(AFL_DIR)/afl-llvm-rt.o $@
-
 # liblkl is special
 $(OUTPUT)liblkl$(SOSUF): $(OUTPUT)%-in.o $(OUTPUT)lib/lkl.o
 $(OUTPUT)liblkl.a: $(OUTPUT)lib/liblkl-in.o $(OUTPUT)lib/lkl.o $(OUTPUT)afl-llvm-rt.o
 	$(QUIET_AR)$(AR) -rc $@ $^
 
 # rule to link programs
+CC := /usr/local/bin/afl-clang-fast
 $(OUTPUT)%$(EXESUF): $(OUTPUT)%-in.o $(OUTPUT)liblkl.a
 	$(QUIET_LINK)$(CC) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y)
 

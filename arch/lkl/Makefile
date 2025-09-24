@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0
 
-export CONFIG_OUTPUT_FORMAT=$(shell $(LD) -r -print-output-format)
-
 KBUILD_CFLAGS += -fno-builtin
 
 exec_format = $(firstword $(subst -, ,$(CONFIG_OUTPUT_FORMAT)))
@@ -40,7 +38,7 @@ KBUILD_CFLAGS += -integrated-as
 KBUILD_CFLAGS += -g
 
 # Enabling libfuzzer instrumentation
-KBUILD_CFLAGS += -fsanitize=fuzzer-no-link
+# KBUILD_CFLAGS += -fsanitize=fuzzer-no-link
 
 KEEP_EH_FRAMES := true
 endif
@@ -103,3 +101,4 @@ install: scripts_unifdef
 define archhelp
   echo '  install       - Install library and headers to INSTALL_PATH/{lib,include}'
 endef
+

@@ -130,7 +130,7 @@ $(OUTPUT)Utils.o:
 $(OUTPUT)Constants.o:
 	cp -f $(SYSCALL_DIR)/Constants.o $@
 
-LDFLAGS += -fsanitize=address
+LDFLAGS += -fsanitize=undefined
 
 # executor (CPP)
 $(OUTPUT)executor: $(OUTPUT)executor-in.o $(OUTPUT)Image.o $(OUTPUT)Program.o $(OUTPUT)Utils.o $(OUTPUT)Constants.o $(OUTPUT)liblkl.a
@@ -189,3 +189,4 @@ FORCE: ;
 .NOTPARALLEL : lib/lkl.o
 .SECONDARY:
 .WAIT:
+

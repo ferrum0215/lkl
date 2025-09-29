@@ -595,7 +595,7 @@ int main(int argc, char **argv)
     ret = lkl_sys_chdir("/");
 
     close_active_fds(prog);
-    bug = lkl_umount_dev(disk_id, cla.part, 0, 1000);
+    bug = lkl_umount_dev(disk_id, cla.part, 0, 7000);
     ret = lkl_disk_remove(disk);
     close(disk.fd);
     delete prog;

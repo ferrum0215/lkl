@@ -101,4 +101,3 @@ install: scripts_unifdef
 define archhelp
   echo '  install       - Install library and headers to INSTALL_PATH/{lib,include}'
 endef
-

@@ -598,7 +598,6 @@ int main(int argc, char **argv)
     bug = lkl_umount_dev(disk_id, cla.part, 0, 7000);
     ret = lkl_disk_remove(disk);
     close(disk.fd);
-    delete prog;
     lkl_sys_halt();
 
     if (cla.emul_verbose)

@@ -513,6 +513,8 @@ int main(int argc, char **argv)
     long bug;
     char mpoint[32];
     unsigned int disk_id;
+    int temp_fd;
+    const char *temp_fn = "temp.image";
 
     struct stat st;
 
@@ -536,22 +538,34 @@ int main(int argc, char **argv)
         mount_options = "acl,user_xattr";
     else if (!strcmp(cla.fsimg_type, "ext4"))
         mount_options = "errors=remount-ro";
-
+   
     lstat(cla.fsimg_path, &st);
-    disk.fd = open(cla.fsimg_path, O_RDWR);
+
+    temp_fd = open(cla.fsimg_path, O_RDONLY);
+    disk.fd = open(temp_fn, O_RDWR | O_CREAT | O_TRUNC, 0666);
     if (disk.fd < 0) {
         fprintf(stderr, "disk open failed\n");
         return -1;
     }
+    
+    off_t offset = 0;
+    ssize_t sent_bit;
+
+    while (offset < st.st_size) {
+        sent_bit = sendfile(disk.fd, temp_fd, &offset, st.st_size - offset);
+        if (sent_bit <= 0) break;
+    }
+
+    unlink(temp_fn);
+    close(temp_fd);
 
     disk.ops = NULL;
-
     ret = lkl_init(&lkl_host_ops);
     if (ret < 0) {
         fprintf(stderr, "lkl init failed: %s\n", lkl_strerror(ret));
         return -1;
     }
-    
+
     ret = lkl_disk_add(&disk);
     if (ret < 0) {
         fprintf(stderr, "can't add disk: %s\n", lkl_strerror(ret));
@@ -600,6 +614,8 @@ int main(int argc, char **argv)
     close(disk.fd);
     lkl_sys_halt();
 
+    __AFL_COVERAGE_OFF();
+
     if (cla.emul_verbose)
         return 0;
     if (bug) {
@@ -609,9 +625,7 @@ int main(int argc, char **argv)
         if (!cla.no_sigraise)
             raise(SIGUSR2);
     }
+    fprintf(stdout, "Done\n");
 
-    __AFL_COVERAGE_OFF();
-    fprintf(stderr, "Done\n");
     return 0;
 }
-

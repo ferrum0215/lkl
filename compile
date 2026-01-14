@@ -31,6 +31,9 @@ if __name__ == '__main__':
     cmd('make mrproper', check=True)
     cmd('make -C tools/lkl clean', check=True)
 
+  # copy config
+  cmd('cp -f %s-config arch/lkl/configs/defconfig' % args.type)
+
   # compile with instrumenting gcc
   dir_path = os.path.dirname(os.path.realpath(__file__))
   cmd('make -C tools/lkl LKL_FUZZING=1 CC=clang-16 CXX=/usr/local/bin/afl-clang-fast++')

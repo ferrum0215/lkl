@@ -353,82 +353,83 @@ int lkl_load_config_env(struct lkl_config *cfg)
 	return 0;
 }
 
-static int parse_mac_str(char *mac_str, __lkl__u8 mac[LKL_ETH_ALEN])
-{
-	char delim[] = ":";
-	char *saveptr = NULL, *token = NULL;
-	int i = 0;
+// static int parse_mac_str(char *mac_str, __lkl__u8 mac[LKL_ETH_ALEN])
+// {
+// 	char delim[] = ":";
+// 	char *saveptr = NULL, *token = NULL;
+// 	int i = 0;
 
-	if (!mac_str)
-		return 0;
+// 	if (!mac_str)
+// 		return 0;
 
-	for (token = strtok_r(mac_str, delim, &saveptr);
-	     i < LKL_ETH_ALEN; i++) {
-		if (!token) {
-			/* The address is too short */
-			return -1;
-		}
+// 	for (token = strtok_r(mac_str, delim, &saveptr);
+// 	     i < LKL_ETH_ALEN; i++) {
+// 		if (!token) {
+// 			/* The address is too short */
+// 			return -1;
+// 		}
 
-		mac[i] = (__lkl__u8) strtol(token, NULL, 16);
-		token = strtok_r(NULL, delim, &saveptr);
-	}
+// 		mac[i] = (__lkl__u8) strtol(token, NULL, 16);
+// 		token = strtok_r(NULL, delim, &saveptr);
+// 	}
 
-	if (strtok_r(NULL, delim, &saveptr)) {
-		/* The address is too long */
-		return -1;
-	}
+// 	if (strtok_r(NULL, delim, &saveptr)) {
+// 		/* The address is too long */
+// 		return -1;
+// 	}
 
-	return 1;
-}
+// 	return 1;
+// }
 
 /* Add permanent neighbor entries in the form of "ip|mac;ip|mac;..." */
-static void add_neighbor(int ifindex, char *entries)
-{
-	char *saveptr = NULL, *token = NULL;
-	char *ip = NULL, *mac_str = NULL;
-	int ret = 0;
-	__lkl__u8 mac[LKL_ETH_ALEN];
-	char ip_addr[16];
-	int af;
+// static void add_neighbor(int ifindex, char *entries)
+// {
+// 	char *saveptr = NULL, *token = NULL;
+// 	char *ip = NULL, *mac_str = NULL;
+// 	int ret = 0;
+// 	__lkl__u8 mac[LKL_ETH_ALEN];
+// 	char ip_addr[16];
+// 	int af;
 
-	for (token = strtok_r(entries, ";", &saveptr); token;
-	     token = strtok_r(NULL, ";", &saveptr)) {
-		ip = strtok(token, "|");
-		mac_str = strtok(NULL, "|");
-		if (ip == NULL || mac_str == NULL || strtok(NULL, "|") != NULL)
-			return;
+// 	for (token = strtok_r(entries, ";", &saveptr); token;
+// 	     token = strtok_r(NULL, ";", &saveptr)) {
+// 		ip = strtok(token, "|");
+// 		mac_str = strtok(NULL, "|");
+// 		if (ip == NULL || mac_str == NULL || strtok(NULL, "|") != NULL)
+// 			return;
 
-		af = LKL_AF_INET;
-		ret = inet_pton(LKL_AF_INET, ip, ip_addr);
-		if (ret == 0) {
-			ret = inet_pton(LKL_AF_INET6, ip, ip_addr);
-			af = LKL_AF_INET6;
-		}
-		if (ret != 1) {
-			lkl_printf("Bad ip address: %s\n", ip);
-			return;
-		}
+// 		af = LKL_AF_INET;
+// 		ret = inet_pton(LKL_AF_INET, ip, ip_addr);
+// 		if (ret == 0) {
+// 			ret = inet_pton(LKL_AF_INET6, ip, ip_addr);
+// 			af = LKL_AF_INET6;
+// 		}
+// 		if (ret != 1) {
+// 			lkl_printf("Bad ip address: %s\n", ip);
+// 			return;
+// 		}
 
-		ret = parse_mac_str(mac_str, mac);
-		if (ret != 1) {
-			lkl_printf("Failed to parse mac: %s\n", mac_str);
-			return;
-		}
-		ret = lkl_add_neighbor(ifindex, af, ip_addr, mac);
-		if (ret) {
-			lkl_printf("Failed to add neighbor entry: %s\n",
-				   lkl_strerror(ret));
-			return;
-		}
-	}
-}
+// 		ret = parse_mac_str(mac_str, mac);
+// 		if (ret != 1) {
+// 			lkl_printf("Failed to parse mac: %s\n", mac_str);
+// 			return;
+// 		}
+// 		ret = lkl_add_neighbor(ifindex, af, ip_addr, mac);
+// 		if (ret) {
+// 			lkl_printf("Failed to add neighbor entry: %s\n",
+// 				   lkl_strerror(ret));
+// 			return;
+// 		}
+// 	}
+// }
 
 /* We don't have an easy way to make FILE*s out of our fds, so we
  * can't use e.g. fgets
  */
 static int dump_file(char *path)
 {
-	int ret = -1, bytes_read = 0;
+	int ret = -1;
+	int bytes_read = 0;
 	char str[1024] = { 0 };
 	int fd;
 
@@ -477,182 +478,182 @@ static void mount_cmds_exec(char *_cmds, int (*callback)(char *))
 static int lkl_config_netdev_create(struct lkl_config *cfg,
 				    struct lkl_config_iface *iface)
 {
-	int ret, offload = 0;
-	struct lkl_netdev_args nd_args;
-	__lkl__u8 mac[LKL_ETH_ALEN] = {0};
-	struct lkl_netdev *nd = NULL;
+	// int ret, offload = 0;
+	// struct lkl_netdev_args nd_args;
+	// __lkl__u8 mac[LKL_ETH_ALEN] = {0};
+	// struct lkl_netdev *nd = NULL;
 
-	if (iface->ifoffload_str)
-		offload = strtol(iface->ifoffload_str, NULL, 0);
-	memset(&nd_args, 0, sizeof(struct lkl_netdev_args));
+	// if (iface->ifoffload_str)
+	// 	offload = strtol(iface->ifoffload_str, NULL, 0);
+	// memset(&nd_args, 0, sizeof(struct lkl_netdev_args));
 
-	if (iface->iftap) {
-		lkl_printf("WARN: LKL_HIJACK_NET_TAP is now obsoleted.\n");
-		lkl_printf("use LKL_HIJACK_NET_IFTYPE and PARAMS\n");
-		nd = lkl_netdev_tap_create(iface->iftap, offload);
-	}
+	// if (iface->iftap) {
+	// 	lkl_printf("WARN: LKL_HIJACK_NET_TAP is now obsoleted.\n");
+	// 	lkl_printf("use LKL_HIJACK_NET_IFTYPE and PARAMS\n");
+	// 	nd = lkl_netdev_tap_create(iface->iftap, offload);
+	// }
 
-	if (!nd && iface->iftype && iface->ifparams) {
-		if ((strcmp(iface->iftype, "tap") == 0)) {
-			nd = lkl_netdev_tap_create(iface->ifparams, offload);
-		} else if ((strcmp(iface->iftype, "macvtap") == 0)) {
-			nd = lkl_netdev_macvtap_create(iface->ifparams,
-						       offload);
-		} else if ((strcmp(iface->iftype, "dpdk") == 0)) {
-			nd = lkl_netdev_dpdk_create(iface->ifparams, offload,
-						    mac);
-		} else if ((strcmp(iface->iftype, "pipe") == 0)) {
-			nd = lkl_netdev_pipe_create(iface->ifparams, offload);
-		} else {
-			if (offload) {
-				lkl_printf("WARN: %s isn't supported on %s\n",
-					   "LKL_HIJACK_OFFLOAD",
-					   iface->iftype);
-				lkl_printf(
-					"WARN: Disabling offload features.\n");
-			}
-			offload = 0;
-		}
-		if (strcmp(iface->iftype, "vde") == 0)
-			nd = lkl_netdev_vde_create(iface->ifparams);
-		if (strcmp(iface->iftype, "raw") == 0)
-			nd = lkl_netdev_raw_create(iface->ifparams);
-	}
+	// if (!nd && iface->iftype && iface->ifparams) {
+	// 	if ((strcmp(iface->iftype, "tap") == 0)) {
+	// 		nd = lkl_netdev_tap_create(iface->ifparams, offload);
+	// 	} else if ((strcmp(iface->iftype, "macvtap") == 0)) {
+	// 		nd = lkl_netdev_macvtap_create(iface->ifparams,
+	// 					       offload);
+	// 	} else if ((strcmp(iface->iftype, "dpdk") == 0)) {
+	// 		nd = lkl_netdev_dpdk_create(iface->ifparams, offload,
+	// 					    mac);
+	// 	} else if ((strcmp(iface->iftype, "pipe") == 0)) {
+	// 		nd = lkl_netdev_pipe_create(iface->ifparams, offload);
+	// 	} else {
+	// 		if (offload) {
+	// 			lkl_printf("WARN: %s isn't supported on %s\n",
+	// 				   "LKL_HIJACK_OFFLOAD",
+	// 				   iface->iftype);
+	// 			lkl_printf(
+	// 				"WARN: Disabling offload features.\n");
+	// 		}
+	// 		offload = 0;
+	// 	}
+	// 	if (strcmp(iface->iftype, "vde") == 0)
+	// 		nd = lkl_netdev_vde_create(iface->ifparams);
+	// 	if (strcmp(iface->iftype, "raw") == 0)
+	// 		nd = lkl_netdev_raw_create(iface->ifparams);
+	// }
 
-	if (nd) {
-		if ((mac[0] != 0) || (mac[1] != 0) ||
-				(mac[2] != 0) || (mac[3] != 0) ||
-				(mac[4] != 0) || (mac[5] != 0)) {
-			nd_args.mac = mac;
-		} else {
-			ret = parse_mac_str(iface->ifmac_str, mac);
+	// if (nd) {
+	// 	if ((mac[0] != 0) || (mac[1] != 0) ||
+	// 			(mac[2] != 0) || (mac[3] != 0) ||
+	// 			(mac[4] != 0) || (mac[5] != 0)) {
+	// 		nd_args.mac = mac;
+	// 	} else {
+	// 		ret = parse_mac_str(iface->ifmac_str, mac);
 
-			if (ret < 0) {
-				lkl_printf("failed to parse mac\n");
-				return -1;
-			} else if (ret > 0) {
-				nd_args.mac = mac;
-			} else {
-				nd_args.mac = NULL;
-			}
-		}
+	// 		if (ret < 0) {
+	// 			lkl_printf("failed to parse mac\n");
+	// 			return -1;
+	// 		} else if (ret > 0) {
+	// 			nd_args.mac = mac;
+	// 		} else {
+	// 			nd_args.mac = NULL;
+	// 		}
+	// 	}
 
-		nd_args.offload = offload;
-		ret = lkl_netdev_add(nd, &nd_args);
-		if (ret < 0) {
-			lkl_printf("failed to add netdev: %s\n",
-				   lkl_strerror(ret));
-			return -1;
-		}
-		nd->id = ret;
-		iface->nd = nd;
-	}
+	// 	nd_args.offload = offload;
+	// 	ret = lkl_netdev_add(nd, &nd_args);
+	// 	if (ret < 0) {
+	// 		lkl_printf("failed to add netdev: %s\n",
+	// 			   lkl_strerror(ret));
+	// 		return -1;
+	// 	}
+	// 	nd->id = ret;
+	// 	iface->nd = nd;
+	// }
 	return 0;
 }
 
 static int lkl_config_netdev_configure(struct lkl_config *cfg,
 				       struct lkl_config_iface *iface)
 {
-	int ret, nd_ifindex = -1;
-	struct lkl_netdev *nd = iface->nd;
+	// int ret, nd_ifindex = -1;
+	// struct lkl_netdev *nd = iface->nd;
 
-	if (!nd) {
-		lkl_printf("no netdev available %s\n", iface ? iface->ifparams
-			   : "(null)");
-		return -1;
-	}
+	// if (!nd) {
+	// 	lkl_printf("no netdev available %s\n", iface ? iface->ifparams
+	// 		   : "(null)");
+	// 	return -1;
+	// }
 
-	if (nd->id >= 0) {
-		nd_ifindex = lkl_netdev_get_ifindex(nd->id);
-		if (nd_ifindex > 0)
-			lkl_if_up(nd_ifindex);
-		else
-			lkl_printf(
-				"failed to get ifindex for netdev id %d: %s\n",
-				nd->id, lkl_strerror(nd_ifindex));
-	}
+	// if (nd->id >= 0) {
+	// 	nd_ifindex = lkl_netdev_get_ifindex(nd->id);
+	// 	if (nd_ifindex > 0)
+	// 		lkl_if_up(nd_ifindex);
+	// 	else
+	// 		lkl_printf(
+	// 			"failed to get ifindex for netdev id %d: %s\n",
+	// 			nd->id, lkl_strerror(nd_ifindex));
+	// }
 
-	if (nd_ifindex >= 0 && iface->ifmtu_str) {
-		int mtu = atoi(iface->ifmtu_str);
+	// if (nd_ifindex >= 0 && iface->ifmtu_str) {
+	// 	int mtu = atoi(iface->ifmtu_str);
 
-		ret = lkl_if_set_mtu(nd_ifindex, mtu);
-		if (ret < 0)
-			lkl_printf("failed to set MTU: %s\n",
-				   lkl_strerror(ret));
-	}
+	// 	ret = lkl_if_set_mtu(nd_ifindex, mtu);
+	// 	if (ret < 0)
+	// 		lkl_printf("failed to set MTU: %s\n",
+	// 			   lkl_strerror(ret));
+	// }
 
-	if (nd_ifindex >= 0 && iface->ifip && iface->ifnetmask_len) {
-		unsigned int addr;
+	// if (nd_ifindex >= 0 && iface->ifip && iface->ifnetmask_len) {
+	// 	unsigned int addr;
 
-		if (inet_pton(LKL_AF_INET, iface->ifip,
-			      (struct lkl_in_addr *)&addr) != 1)
-			lkl_printf("Invalid ipv4 address: %s\n", iface->ifip);
+	// 	if (inet_pton(LKL_AF_INET, iface->ifip,
+	// 		      (struct lkl_in_addr *)&addr) != 1)
+	// 		lkl_printf("Invalid ipv4 address: %s\n", iface->ifip);
 
-		int nmlen = atoi(iface->ifnetmask_len);
+	// 	int nmlen = atoi(iface->ifnetmask_len);
 
-		if (addr != LKL_INADDR_NONE && nmlen > 0 && nmlen < 32) {
-			ret = lkl_if_set_ipv4(nd_ifindex, addr, nmlen);
-			if (ret < 0)
-				lkl_printf("failed to set IPv4 address: %s\n",
-					   lkl_strerror(ret));
-		}
-		if (iface->ifgateway) {
-			unsigned int gwaddr;
+	// 	if (addr != LKL_INADDR_NONE && nmlen > 0 && nmlen < 32) {
+	// 		ret = lkl_if_set_ipv4(nd_ifindex, addr, nmlen);
+	// 		if (ret < 0)
+	// 			lkl_printf("failed to set IPv4 address: %s\n",
+	// 				   lkl_strerror(ret));
+	// 	}
+	// 	if (iface->ifgateway) {
+	// 		unsigned int gwaddr;
 
-			if (inet_pton(LKL_AF_INET, iface->ifgateway,
-				      (struct lkl_in_addr *)&gwaddr) != 1)
-				lkl_printf("Invalid ipv4 gateway: %s\n",
-					   iface->ifgateway);
+	// 		if (inet_pton(LKL_AF_INET, iface->ifgateway,
+	// 			      (struct lkl_in_addr *)&gwaddr) != 1)
+	// 			lkl_printf("Invalid ipv4 gateway: %s\n",
+	// 				   iface->ifgateway);
 
-			if (gwaddr != LKL_INADDR_NONE) {
-				ret = lkl_if_set_ipv4_gateway(nd_ifindex,
-						addr, nmlen, gwaddr);
-				if (ret < 0)
-					lkl_printf(
-						"failed to set v4 if gw: %s\n",
-						lkl_strerror(ret));
-			}
-		}
-	}
+	// 		if (gwaddr != LKL_INADDR_NONE) {
+	// 			ret = lkl_if_set_ipv4_gateway(nd_ifindex,
+	// 					addr, nmlen, gwaddr);
+	// 			if (ret < 0)
+	// 				lkl_printf(
+	// 					"failed to set v4 if gw: %s\n",
+	// 					lkl_strerror(ret));
+	// 		}
+	// 	}
+	// }
 
-	if (nd_ifindex >= 0 && iface->ifipv6 &&
-			iface->ifnetmask6_len) {
-		struct lkl_in6_addr addr;
-		unsigned int pflen = atoi(iface->ifnetmask6_len);
+	// if (nd_ifindex >= 0 && iface->ifipv6 &&
+	// 		iface->ifnetmask6_len) {
+	// 	struct lkl_in6_addr addr;
+	// 	unsigned int pflen = atoi(iface->ifnetmask6_len);
 
-		if (inet_pton(LKL_AF_INET6, iface->ifipv6,
-			      (struct lkl_in6_addr *)&addr) != 1) {
-			lkl_printf("Invalid ipv6 addr: %s\n",
-				   iface->ifipv6);
-		}  else {
-			ret = lkl_if_set_ipv6(nd_ifindex, &addr, pflen);
-			if (ret < 0)
-				lkl_printf("failed to set IPv6 address: %s\n",
-					   lkl_strerror(ret));
-		}
-		if (iface->ifgateway6) {
-			char gwaddr[16];
+	// 	if (inet_pton(LKL_AF_INET6, iface->ifipv6,
+	// 		      (struct lkl_in6_addr *)&addr) != 1) {
+	// 		lkl_printf("Invalid ipv6 addr: %s\n",
+	// 			   iface->ifipv6);
+	// 	}  else {
+	// 		ret = lkl_if_set_ipv6(nd_ifindex, &addr, pflen);
+	// 		if (ret < 0)
+	// 			lkl_printf("failed to set IPv6 address: %s\n",
+	// 				   lkl_strerror(ret));
+	// 	}
+	// 	if (iface->ifgateway6) {
+	// 		char gwaddr[16];
 
-			if (inet_pton(LKL_AF_INET6, iface->ifgateway6,
-								gwaddr) != 1) {
-				lkl_printf("Invalid ipv6 gateway: %s\n",
-					   iface->ifgateway6);
-			} else {
-				ret = lkl_if_set_ipv6_gateway(nd_ifindex,
-						&addr, pflen, gwaddr);
-				if (ret < 0)
-					lkl_printf(
-						"failed to set v6 if gw: %s\n",
-						lkl_strerror(ret));
-			}
-		}
-	}
+	// 		if (inet_pton(LKL_AF_INET6, iface->ifgateway6,
+	// 							gwaddr) != 1) {
+	// 			lkl_printf("Invalid ipv6 gateway: %s\n",
+	// 				   iface->ifgateway6);
+	// 		} else {
+	// 			ret = lkl_if_set_ipv6_gateway(nd_ifindex,
+	// 					&addr, pflen, gwaddr);
+	// 			if (ret < 0)
+	// 				lkl_printf(
+	// 					"failed to set v6 if gw: %s\n",
+	// 					lkl_strerror(ret));
+	// 		}
+	// 	}
+	// }
 
-	if (nd_ifindex >= 0 && iface->ifneigh_entries)
-		add_neighbor(nd_ifindex, iface->ifneigh_entries);
+	// if (nd_ifindex >= 0 && iface->ifneigh_entries)
+	// 	add_neighbor(nd_ifindex, iface->ifneigh_entries);
 
-	if (nd_ifindex >= 0 && iface->ifqdisc_entries)
-		lkl_qdisc_parse_add(nd_ifindex, iface->ifqdisc_entries);
+	// if (nd_ifindex >= 0 && iface->ifqdisc_entries)
+	// 	lkl_qdisc_parse_add(nd_ifindex, iface->ifqdisc_entries);
 
 	return 0;
 }
@@ -748,7 +749,8 @@ int lkl_load_config_post(struct lkl_config *cfg)
 			lkl_printf("Invalid ipv4 gateway: %s\n", cfg->gateway);
 
 		if (gwaddr != LKL_INADDR_NONE) {
-			ret = lkl_set_ipv4_gateway(gwaddr);
+			// ret = lkl_set_ipv4_gateway(gwaddr);
+			ret = 0;
 			if (ret < 0)
 				lkl_printf("failed to set IPv4 gateway: %s\n",
 					   lkl_strerror(ret));
@@ -761,7 +763,8 @@ int lkl_load_config_post(struct lkl_config *cfg)
 		if (inet_pton(LKL_AF_INET6, cfg->gateway6, gw) != 1) {
 			lkl_printf("Invalid ipv6 gateway: %s\n", cfg->gateway6);
 		} else {
-			ret = lkl_set_ipv6_gateway(gw);
+			// ret = lkl_set_ipv6_gateway(gw);
+			ret = 0;
 			if (ret < 0)
 				lkl_printf("failed to set IPv6 gateway: %s\n",
 					   lkl_strerror(ret));
@@ -803,19 +806,19 @@ int lkl_load_config_post(struct lkl_config *cfg)
 
 int lkl_unload_config(struct lkl_config *cfg)
 {
-	struct lkl_config_iface *iface;
+	// struct lkl_config_iface *iface;
 
 	if (cfg) {
 		if (cfg->dump)
 			mount_cmds_exec(cfg->dump, dump_file);
 
-		for (iface = cfg->ifaces; iface; iface = iface->next) {
-			if (iface->nd) {
-				if (iface->nd->id >= 0)
-					lkl_netdev_remove(iface->nd->id);
-				lkl_netdev_free(iface->nd);
-			}
-		}
+		// for (iface = cfg->ifaces; iface; iface = iface->next) {
+		// 	if (iface->nd) {
+		// 		if (iface->nd->id >= 0)
+		// 			lkl_netdev_remove(iface->nd->id);
+		// 		lkl_netdev_free(iface->nd);
+		// 	}
+		// }
 
 		lkl_clean_config(cfg);
 	}

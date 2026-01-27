@@ -56,7 +56,6 @@ static struct argp_option options[] = {
     {"enable-printk", 'v', 0, 0, "show Linux printks"},
     {"filesystem-type", 't', "string", 0, "select filesystem type - mandatory"},
     {"filesystem-image", 'i', "string", 0, "path to the filesystem image - mandatory"},
-    {"serialized-program", 'p', "string", 0, "serialized program - mandatory"},
     {"no-sigraise", 'n', 0, 0, "Do not raise SIGUSR2"},
     {0},
 };
@@ -68,7 +67,6 @@ static struct cl_args {
     int no_sigraise;
     const char *fsimg_type;
     const char *fsimg_path;
-    const char *prog_path;
 } cla;
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state)
@@ -85,9 +83,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
             break;
         case 'i':
             cla->fsimg_path = arg;
-            break;
-        case 'p':
-            cla->prog_path = arg;
             break;
         case 'n':
             cla->no_sigraise = 1;
@@ -223,6 +218,9 @@ void *userfault_init(void *image_buffer, size_t size) {
 int main(int argc, char **argv)
 {
     __AFL_COVERAGE_OFF();
+
+    unsigned char *data = __AFL_FUZZ_TESTCASE_BUF;
+    size_t len = __AFL_FUZZ_TESTCASE_LEN;
     struct lkl_disk disk;
     long ret;
     long bug;
@@ -251,7 +249,7 @@ int main(int argc, char **argv)
         mount_options = "acl,user_xattr";
     else if (!strcmp(cla.fsimg_type, "ext4"))
         mount_options = "errors=remount-ro";
-   
+
     lstat(cla.fsimg_path, &st);
 
     disk.fd = open(cla.fsimg_path, O_RDONLY);
@@ -271,6 +269,7 @@ int main(int argc, char **argv)
     ret = lkl_disk_add(&disk);
     if (ret < 0) {
         fprintf(stderr, "can't add disk: %s\n", lkl_strerror(ret));
+        lkl_sys_halt();
         close(disk.fd);
         return -1;
     }
@@ -286,6 +285,7 @@ int main(int argc, char **argv)
     if (ret) {
         fprintf(stderr, "can't mount base img disk: %s\n", lkl_strerror(ret));
         lkl_sys_halt();
+        lkl_disk_remove(disk);
         close(disk.fd);
         return -1;
     }
@@ -295,12 +295,13 @@ int main(int argc, char **argv)
         fprintf(stderr, "can't chdir to %s: %s\n", mpoint,
                 lkl_strerror(ret));
         lkl_umount_dev(disk_id, cla.part, 0, 1000);
+        lkl_disk_remove(disk);
         lkl_sys_halt();
         close(disk.fd);
         return -1;
     }
 
-    Program *prog = Program::deserialize(cla.prog_path, true);
+    Program *prog = Program::deserialize(data);
     int callcnt = 1;
     for (Syscall *syscall : prog->syscalls) {
         if (verbose)
@@ -328,7 +329,7 @@ int main(int argc, char **argv)
         if (!cla.no_sigraise)
             raise(SIGUSR2);
     }
-    fprintf(stdout, "Done\n");
 
     return 0;
 }
+

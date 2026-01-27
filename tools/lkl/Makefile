@@ -52,7 +52,7 @@ export CFLAGS += -I$(OUTPUT)/include -Iinclude -Wall -g -O2 -Wextra \
 	 -Wno-unused-parameter \
 	 -Wno-missing-field-initializers -fno-strict-aliasing
 
-export CXXFLAGS += -std=c++11 -fPIC -I$(OUTPUT)/include -Iinclude -I$(SYSCALL_DIR) \
+export CXXFLAGS += -std=c++11 -fPIC -I$(OUTPUT)/include -Iinclude -I$(AFL_CMB_DIR) \
 	 -Wall -g -O2 -Wextra \
 	 -Wno-unused-parameter \
 	 -Wno-missing-field-initializers -fno-strict-aliasing
@@ -66,7 +66,7 @@ include Targets
 expand-targets = $(foreach t,$(1),$(if $(filter .%,$(t)),$(t),$(OUTPUT)$(t)$(2)))
 
 TARGETS := $(call expand-targets,$(progs-y),$(EXESUF))
-TARGETS += $(call expand-targets,$(tests-y),$(EXESUF))
+# TARGETS += $(call expand-targets,$(tests-y),$(EXESUF))
 TARGETS += $(call expand-targets,$(libs-y),$(SOSUF))
 all: $(TARGETS)
 
@@ -119,18 +119,18 @@ $(OUTPUT)cpfromfs$(EXESUF): cptofs$(EXESUF)
 
 # executer's dependencies
 $(OUTPUT)Image.o:
-	cp -f $(SYSCALL_DIR)/Image.o $@
+	cp -f $(AFL_CMB_DIR)/Image.o $@
 
 $(OUTPUT)Program.o:
-	cp -f $(SYSCALL_DIR)/Program.o $@
+	cp -f $(AFL_CMB_DIR)/Program.o $@
 
 $(OUTPUT)Utils.o:
-	cp -f $(SYSCALL_DIR)/Utils.o $@
+	cp -f $(AFL_CMB_DIR)/Utils.o $@
 
 $(OUTPUT)Constants.o:
-	cp -f $(SYSCALL_DIR)/Constants.o $@
+	cp -f $(AFL_CMB_DIR)/Constants.o $@
 
-LDFLAGS += -fsanitize=undefined
+LDFLAGS += -fsanitize=address
 
 # executor (CPP)
 $(OUTPUT)executor: $(OUTPUT)executor-in.o $(OUTPUT)Image.o $(OUTPUT)Program.o $(OUTPUT)Utils.o $(OUTPUT)Constants.o $(OUTPUT)liblkl.a
@@ -142,6 +142,9 @@ $(OUTPUT)combined: $(OUTPUT)combined-in.o $(OUTPUT)Image.o $(OUTPUT)Program.o $(
 
 # combined-consistency (CPP)
 $(OUTPUT)combined-consistency: $(OUTPUT)combined-consistency-in.o $(OUTPUT)Image.o $(OUTPUT)Program.o $(OUTPUT)Utils.o $(OUTPUT)Constants.o $(OUTPUT)liblkl.a
+	$(QUIET_LINK)$(CXX) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y) -lz
+
+$(OUTPUT)shm-combined-consistency: $(OUTPUT)shm-combined-consistency-in.o $(OUTPUT)Image.o $(OUTPUT)Program.o $(OUTPUT)Utils.o $(OUTPUT)Constants.o $(OUTPUT)liblkl.a
 	$(QUIET_LINK)$(CXX) $(LDFLAGS) $(LDFLAGS_$*-y) -o $@ $^ $(LDLIBS) $(LDLIBS_$*-y) -lz
 
 clean:

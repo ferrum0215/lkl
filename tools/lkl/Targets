@@ -15,6 +15,10 @@ progs-y += combined-consistency
 LDLIBS_combined-consistency-y := -larchive -lz
 LDLIBS_combined-consistency-$(LKL_HOST_CONFIG_NEEDS_LARGP) += -largp
 
-progs-y += tests/boot
-progs-y += tests/disk
+progs-y += shm-combined-consistency
+LDLIBS_shm-combined-consistency-y := -larchive -lz
+LDLIBS_shm-combined-consistency-$(LKL_HOST_CONFIG_NEEDS_LARGP) += -largp
+
+# progs-y += tests/boot
+# progs-y += tests/disk
 # progs-y += tests/net-test

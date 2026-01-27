@@ -5,4 +5,5 @@ tfuzz-y += tfuzz.o
 executor-y += executor.o
 combined-y += combined.o
 combined-consistency-y += combined-consistency.o
+shm-combined-consistency-y += shm-combined-consistency.o
 lklfuse-$(LKL_HOST_CONFIG_FUSE) += lklfuse.o

@@ -42,3 +42,4 @@ if __name__ == '__main__':
   cmd('cp -f tools/lkl/executor tools/lkl/%s-executor' % args.type)
   cmd('cp -f tools/lkl/combined tools/lkl/%s-combined' % args.type)
   cmd('cp -f tools/lkl/combined-consistency tools/lkl/%s-combined-consistency' % args.type)
+  cmd('cp -f tools/lkl/shm-combined-consistency tools/lkl/%s-shm-combined-consistency' % args.type)

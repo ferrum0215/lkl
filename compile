@@ -3,6 +3,7 @@
 import sys, argparse, errno, os, shutil, subprocess
 
 supported = ['ext4', 'xfs', 'btrfs', 'f2fs', 'gfs2', 'hfsplus', 'reiserfs', 'fat', 'sdcardfs']
+no_copy = ['btrfs', 'f2fs']
 
 def cmd(command, check=False, shell=True):
     print(command)
@@ -34,9 +35,16 @@ if __name__ == '__main__':
   # copy config
   cmd('cp -f %s-config arch/lkl/configs/defconfig' % args.type)
 
+  if args.type in no_copy:
+    cmd('cp -f combined-consistency-no_copy.cpp tools/lkl/combined-consistency.cpp')
+    cmd('cp -f shm-combined-consistency-no_copy.cpp tools/lkl/shm-combined-consistency.cpp')
+  else:
+    cmd('cp -f combined-consistency-copy.cpp tools/lkl/combined-consistency.cpp')
+    cmd('cp -f shm-combined-consistency-copy.cpp tools/lkl/shm-combined-consistency.cpp')  
+
   # compile with instrumenting gcc
   dir_path = os.path.dirname(os.path.realpath(__file__))
-  cmd('make -C tools/lkl LKL_FUZZING=1 CC=clang-16 CXX=/usr/local/bin/afl-clang-fast++')
+  cmd('make -C tools/lkl LKL_FUZZING=1 -j CC=clang-16 CXX=/usr/local/bin/afl-clang-fast++')
 
   # copy object file
   cmd('cp -f tools/lkl/executor tools/lkl/%s-executor' % args.type)

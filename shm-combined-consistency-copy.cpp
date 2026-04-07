@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include <time.h>
 #include <argp.h>
 #include <unistd.h>
 #include <string.h>
@@ -31,12 +30,14 @@
 #include <experimental/filesystem>
 #include <errno.h>
 #include <signal.h>
+#include <chrono>
 
 #include <zlib.h>
 #include <sys/sendfile.h>
 
 #include "executor.hpp"
 #include "Program.hpp"
+#include "time_shm.h"
 
 #define PAGE_SIZE 4096
 #define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \
@@ -220,7 +221,6 @@ int main(int argc, char **argv)
     __AFL_COVERAGE_OFF();
 
     unsigned char *data = __AFL_FUZZ_TESTCASE_BUF;
-    size_t len = __AFL_FUZZ_TESTCASE_LEN;
     struct lkl_disk disk;
     long ret;
     long bug;
@@ -231,9 +231,30 @@ int main(int argc, char **argv)
 
     int verbose = 0;
 
+    const char *name = getenv("AFL_TIME_SHM_NAME");
+    if (!name) {
+        fprintf(stderr, "AFL_TIME_SHM_NAME not set\n");
+        return -1;
+    }
+
+    int fd = shm_open(name, O_RDWR, 0600);
+    if (fd < 0) {
+        fprintf(stderr, "shm open failed\n");
+        return -1;
+    }
+
+    struct time_shm *timer = (struct time_shm *)mmap(NULL, sizeof(*timer), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (timer == MAP_FAILED) {
+        fprintf(stderr, "shm mmap failed\n");
+        close(fd);
+        return -1;
+    }
+
     cla.no_sigraise = 0;
     if (argp_parse(&argp_executor, argc, argv, 0, 0, &cla) < 0) {
         fprintf(stderr, "arg parse failed\n");
+        munmap(timer, sizeof(*timer));
+        close(fd);
         return -1;
     }
 
@@ -255,6 +276,8 @@ int main(int argc, char **argv)
     int src_fd = open(cla.fsimg_path, O_RDONLY);
     if (src_fd < 0) {
         fprintf(stderr, "src disk open failed\n");
+        munmap(timer, sizeof(*timer));
+        close(fd);
         return -1;
     }
     char fsimg[] = "/tmp/fsimg.XXXXXX";
@@ -262,6 +285,8 @@ int main(int argc, char **argv)
     if (dst_fd < 0) {
         fprintf(stderr, "dst disk open failed\n");
         close(src_fd);
+        munmap(timer, sizeof(*timer));
+        close(fd);
         return -1;
     }
     unlink(fsimg);
@@ -277,6 +302,8 @@ int main(int argc, char **argv)
     if (ret < 0) {
         fprintf(stderr, "lkl init failed: %s\n", lkl_strerror(ret));
         close(disk.fd);
+        munmap(timer, sizeof(*timer));
+        close(fd);
         return -1;
     }
 
@@ -285,6 +312,8 @@ int main(int argc, char **argv)
         fprintf(stderr, "can't add disk: %s\n", lkl_strerror(ret));
         lkl_sys_halt();
         close(disk.fd);
+        munmap(timer, sizeof(*timer));
+        close(fd);
         return -1;
     }
     disk_id = ret;
@@ -301,6 +330,8 @@ int main(int argc, char **argv)
         lkl_sys_halt();
         lkl_disk_remove(disk);
         close(disk.fd);
+        munmap(timer, sizeof(*timer));
+        close(fd);
         return -1;
     }
 
@@ -312,6 +343,8 @@ int main(int argc, char **argv)
         lkl_disk_remove(disk);
         lkl_sys_halt();
         close(disk.fd);
+        munmap(timer, sizeof(*timer));
+        close(fd);
         return -1;
     }
 
@@ -327,10 +360,20 @@ int main(int argc, char **argv)
     ret = lkl_sys_chdir("/");
 
     close_active_fds(prog);
-    bug = lkl_umount_dev(disk_id, cla.part, 0, 7000);
+
+    auto start = std::chrono::high_resolution_clock::now();
+    bug = lkl_umount_dev(disk_id, cla.part, 0, 5000);
+    auto end = std::chrono::high_resolution_clock::now();
+    uint64_t ns_diff = uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+    atomic_store_explicit(&timer->value, ns_diff, memory_order_release);
+    atomic_fetch_add_explicit(&timer->value, ns_diff, memory_order_release);
+
     ret = lkl_disk_remove(disk);
     close(disk.fd);
     lkl_sys_halt();
+
+    munmap(timer, sizeof(*timer));
+    close(fd);
 
     __AFL_COVERAGE_OFF();
 
